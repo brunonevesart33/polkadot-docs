@@ -82,7 +82,7 @@ const manager = new SignerManager({
 });
 ```
 
-- **`ss58Prefix`**: The SS58 address-format prefix for the target network. Use `0` for the Polkadot relay chain.
+- **`ss58Prefix`**: The SS58 address-format prefix for the target network. Use `0` for Polkadot, which covers both the relay chain and Polkadot Hub.
 - **`dappName`**: A human-readable name for your Product, shown in Desktop UI.
 - **`onConnect`**: Fires once per connection transition. Request the resources your Product needs here, before any signing call is made.
 - **`ctx.requestResourceAllocation`**: The one call in this package that **throws** instead of returning a `Result`, so wrap it in `try`/`catch`. Each outcome is `'Allocated'`, `'Rejected'`, or `'NotAvailable'`; treat anything other than allocated as the capability being unavailable.
@@ -205,20 +205,20 @@ async function signMessage() {
 
 ## Sign and Submit a Transaction
 
-To sign a transaction, get a `PolkadotSigner` from `SignerManager` and pass it to the `signAndSubmit` method from `polkadot-api` (PAPI). The SDK handles routing the signing request to Desktop, which renders a signing modal and forwards to the [Polkadot App](/reference/apps/hosts/polkadot-app/).
+To sign a transaction, get a PAPI transaction creator from `SignerManager` with `getSigner()` and pass it to the `createAndSubmit` method of a `polkadot-api` (PAPI) transaction. The SDK handles routing the signing request to Desktop, which renders a signing modal and forwards to the [Polkadot App](/reference/apps/hosts/polkadot-app/).
 
-`@parity/product-sdk-signer` provides only the signer interface; chain connectivity uses `polkadot-api` directly. Set up your PAPI client separately:
+`@parity/product-sdk-signer` provides only the signer interface; chain connectivity uses `polkadot-api` directly. Install `polkadot-api@{{ dependencies.javascript_packages.polkadot_api.version }}` and set up your PAPI client separately:
 
 ```typescript
 import { createClient } from 'polkadot-api';
-import { getWsProvider } from 'polkadot-api/ws-provider/web';
-import { dot } from '@polkadot-api/descriptors';
+import { getWsProvider } from 'polkadot-api/ws';
+import { polkadotHub } from '@polkadot-api/descriptors';
 
-const client = createClient(getWsProvider('wss://rpc.polkadot.io'));
-const api = client.getTypedApi(dot);
+const client = createClient(getWsProvider('wss://polkadot-asset-hub-rpc.polkadot.io'));
+const api = client.getTypedApi(polkadotHub);
 ```
 
-The `dot` descriptor is the typed API surface for the Polkadot relay chain. Run `npx papi add dot` in your project to pull or regenerate it.
+The `polkadotHub` descriptor is the typed API surface for Polkadot Hub (Asset Hub), where account balances live since the Asset Hub migration. Run `npx papi add polkadotHub -w wss://polkadot-asset-hub-rpc.polkadot.io` in your project to pull or regenerate it.
 
 ```typescript
 async function transfer() {
@@ -235,11 +235,11 @@ async function transfer() {
   if (!signer) return null;
 
   const tx = api.tx.Balances.transfer_keep_alive({
-    dest: recipient,
+    dest: { type: 'Id', value: recipient },
     value: 1_000_000_000_000n,
   });
 
-  return tx.signAndSubmit(signer);
+  return tx.createAndSubmit(signer);
 }
 ```
 
@@ -251,15 +251,17 @@ Two outcomes are worth handling explicitly: the user rejects the request, or the
 import {
   HostRejectedError,
   TimeoutError,
+  type SignerManager,
 } from '@parity/product-sdk-signer';
-import type { PolkadotSigner } from 'polkadot-api';
+
+type Signer = NonNullable<ReturnType<SignerManager['getSigner']>>;
 
 async function submitOrReport(
-  tx: { signAndSubmit(signer: PolkadotSigner): Promise<unknown> },
-  signer: PolkadotSigner,
+  tx: { createAndSubmit(signer: Signer): Promise<unknown> },
+  signer: Signer,
 ) {
   try {
-    return await tx.signAndSubmit(signer);
+    return await tx.createAndSubmit(signer);
   } catch (error) {
     if (error instanceof HostRejectedError) {
       // The user dismissed the signing prompt on the Polkadot App
