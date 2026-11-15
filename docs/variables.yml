@@ -64,6 +64,9 @@ dependencies:
     moonwall:
       name: '@moonwall/cli'
       version: 5.18.3
+    product_sdk_auth:
+      name: '@parity/product-sdk-auth'
+      version: 0.6.0
     polkadot_js_api:
       name: '@polkadot/api'
       version: 17.0.2

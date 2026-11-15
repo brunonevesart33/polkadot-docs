@@ -23,8 +23,8 @@ Your Product requests allowances through the SDK, typically once on connect. The
 | `SmartContractAllowance`  | Sponsoring transactions for a product account, keyed by its derivation index, for [contract](/apps/product-sdk/contracts/) calls. |
 | `AutoSigning`             | Signing and submitting transactions on the user's behalf without a per-action prompt. |
 
-!!! note "Tag spelling differs by toolchain"
-    The Host and frontend codec spells the storage tag `BulletinAllowance`. The CLI and terminal codec spells it `BulletInAllowance` (capital `I`). They are two different codecs; use the spelling that matches the surface you are calling, and do not "correct" one to the other.
+!!! note "Tag spelling differs by toolchain version"
+    The Host and frontend codec spells the storage tag `BulletinAllowance`. From [Terminal](/apps/product-sdk/terminal/) 0.14 and [Auth](/apps/product-sdk/auth/) 0.6, the CLI packages use the same spelling. Earlier CLI and terminal releases, including the ones `playground-cli` v0.48 is built on, spell it `BulletInAllowance` (capital `I`). Use the spelling that matches the package version you are calling, and do not "correct" one to the other.
 
 ## Requesting an Allowance
 

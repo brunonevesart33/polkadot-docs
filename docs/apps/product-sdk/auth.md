@@ -15,6 +15,9 @@ It sits one level above [Terminal](/apps/product-sdk/terminal/): where that pack
 !!! note "Not for Products"
     Like [Terminal](/apps/product-sdk/terminal/), this is CLI infrastructure. A Product runs inside a Host that already owns pairing and signing, so it uses [Signer](/apps/product-sdk/signer/) instead.
 
+!!! note "Version"
+    This page covers release 0.6 and later, which runs on [Terminal](/apps/product-sdk/terminal/) 0.14 and the truapi core. If you are upgrading from 0.5, see the [0.6.0 changelog entry](https://github.com/paritytech/product-sdk/blob/main/product-sdk/packages/auth/CHANGELOG.md).
+
 ## When to Use It
 
 - To build the login and logout flows of a command-line tool that signs as the user's Polkadot App account.
@@ -26,13 +29,19 @@ It sits one level above [Terminal](/apps/product-sdk/terminal/): where that pack
 ## Core Concepts
 
 - **`createAuthClient(config)`**: Builds a client bound to one product's `AuthConfig`. Every adapter, derivation, and storage path reads from that config, which is what makes the package product-agnostic.
-- **`AuthConfig`**: Four fields. `dappId` scopes the on-disk session namespace (`~/.polkadot-apps/{dappId}_*`) and the pairing, so each product gets an independently revocable session; `productId` and `derivationIndex` derive the product account; `peopleEndpoints` are the RPC endpoints the adapter connects to.
+- **`AuthConfig`**: Three required fields and three optional ones. `dappId` names the CLI's own storage directory (`~/.polkadot-apps/<dappId>/` by default), so each CLI gets an independently revocable session. `productId` is the dotNS id the CLI acts as (for example, `my-cli.dot`), and together with `derivationIndex` it derives the product account. The optional `network` defaults to `paseo-next-v2`, `storageDir` overrides the directory, and `approvals` answers the core's approval prompts.
 - **`connect()` returns one of two shapes**: `{ kind: 'existing' }` when a session is already on disk, or `{ kind: 'qr', qrCode, login }` when the user has to scan. Print the QR _before_ mounting any interface, then await `waitForLogin(handle, onStatus)`.
 - **Three addresses, one key**: `SessionAddresses` carries `rootAddress` (the wallet root, the right input for `lookupUsername` in [Individuality](/apps/product-sdk/individuality/)), `productAddress` (the product account that actually signs), and `productH160` (the same product key as an EVM address). The last two are the same public key in two encodings.
-- **`SessionHandle.destroy()` is mandatory**: The signer depends on a long-lived adapter whose WebSocket keeps the Node event loop alive. Not calling `destroy()` means your CLI hangs on exit.
+- **`SessionHandle.destroy()` is mandatory**: The signer depends on a long-lived Terminal adapter whose core thread and chain connections keep the Node process alive. Not calling `destroy()` means your CLI hangs on exit.
 - **Allocation before signing**: A freshly paired session cannot sign until the user grants resource allowances. `requestAllocation` requests `DEFAULT_RESOURCES` through the client's own `productId`, and `summarizeOutcomes` sorts the results into `granted`, `rejected`, and `unavailable` buckets by pairing each outcome with the resource at the same index.
 
 ## Log In and Sign
+
+Install the package:
+
+```bash
+npm install @parity/product-sdk-auth@{{ dependencies.javascript_packages.product_sdk_auth.version }}
+```
 
 Build the client, branch on whether a session already exists, then get a signer:
 
@@ -43,7 +52,7 @@ const auth = createAuthClient({
   dappId: 'my-cli',
   productId: 'my-cli.dot',
   derivationIndex: 0,
-  peopleEndpoints: ['wss://paseo-people-next-system-rpc.polkadot.io'],
+  network: 'paseo-next-v2', // the default, shown for clarity
 });
 
 const connection = await auth.connect();
@@ -51,7 +60,8 @@ const connection = await auth.connect();
 if (connection.kind === 'qr') {
   console.log(connection.qrCode); // print before any interface mounts
   await auth.waitForLogin(connection.login, (status) => {
-    if (status.step === 'pending') console.log(status.stage);
+    if (status.step === 'error') console.error(status.message);
+    else console.log(status.step); // 'waiting', 'paired', then 'success'
   });
 }
 
@@ -74,7 +84,7 @@ A fresh session needs allowances before its first signature. Request them once a
 import { summarizeOutcomes, DEFAULT_RESOURCES } from '@parity/product-sdk-auth';
 
 // The client binds `productId` from your AuthConfig, so it is not passed here.
-const outcomes = await auth.requestAllocation(session.userSession, DEFAULT_RESOURCES);
+const outcomes = await auth.requestAllocation(session, DEFAULT_RESOURCES);
 
 const { granted, rejected, unavailable } = summarizeOutcomes(outcomes, DEFAULT_RESOURCES);
 if (rejected.length || unavailable.length) {
@@ -85,12 +95,12 @@ if (rejected.length || unavailable.length) {
 }
 ```
 
-`DEFAULT_RESOURCES` covers what a CLI product account normally needs: `BulletInAllowance`, `StatementStoreAllowance`, and `SmartContractAllowance` for derivation index `0`. `summarizeOutcomes` buckets the results into `granted`, `rejected`, and `unavailable` — it is order-sensitive, so pass the same resource array you requested. Treat anything other than granted as a capability being unavailable rather than a fatal error, so a declined grant degrades gracefully. See [Allowances and Permissions](/apps/concepts/allowances/) for what each resource authorizes.
+`DEFAULT_RESOURCES` covers what a CLI product account normally needs: `BulletinAllowance`, `StatementStoreAllowance`, and `SmartContractAllowance` for derivation index `0`. `summarizeOutcomes` buckets the results into `granted`, `rejected`, and `unavailable` — it is order-sensitive, so pass the same resource array you requested. Treat anything other than granted as a capability being unavailable rather than a fatal error, so a declined grant degrades gracefully. See [Allowances and Permissions](/apps/concepts/allowances/) for what each resource authorizes.
 
-!!! warning "These outcomes are tagged objects, not strings"
-    An allocation outcome here is `{ tag: 'Allocated' | 'Rejected' | 'NotAvailable', ... }`, so compare `outcome.tag`, not `outcome`. The same concept in [`host`](/apps/product-sdk/host/) is a bare string union, and a comparison written for one silently never matches on the other.
+!!! warning "Outcomes are plain strings since 0.6"
+    An allocation outcome is the string `'Allocated'`, `'Rejected'`, or `'NotAvailable'`, the same union as in [`host`](/apps/product-sdk/host/), so compare `outcome` directly. Releases before 0.6 returned tagged objects, so a comparison on `outcome.tag` written for 0.5 silently never matches.
 
-The standalone `requestResourceAllocation(session, productId, resources?, onExisting?)` is there when you are not holding an `AuthClient`. It throws on transport failures; per-resource refusals come back as outcomes rather than exceptions.
+The standalone `requestResourceAllocation(adapter, productId, resources?)` is there when you are not holding an `AuthClient`. It takes a Terminal adapter, such as `session.adapter`. It throws on transport failures; per-resource refusals come back as outcomes rather than exceptions. Requesting an allowance the product already holds increases it rather than replacing it.
 
 ## Resolve a Signer From Mixed Sources
 
@@ -118,15 +128,16 @@ try {
 }
 ```
 
-`resolveSigner` takes the client first, then the options, and returns a `ResolvedSigner`: the `signer` itself plus `address`, `source` (`'dev'` or `'session'`), and a `destroy()` to call in a `finally` block. For a mobile session it also carries `userSession` and the `addresses` triple; both are absent for a dev signer. `parseDevAccountName` turns a name such as `//Alice` into the corresponding well-known dev account, for the CI path.
+`resolveSigner` takes the client first, then the options, and returns a `ResolvedSigner`: the `signer` itself plus `address`, `source` (`'dev'` or `'session'`), and a `destroy()` to call in a `finally` block. For a mobile session it also carries `session` and the `addresses` triple; both are absent for a dev signer. `parseDevAccountName` turns a name such as `//Alice` into the corresponding well-known dev account, for the CI path.
 
 ## Limitations
 
-- Node only, like [Terminal](/apps/product-sdk/terminal/), and subject to the same Node 21 requirement through it.
+- Node only, like [Terminal](/apps/product-sdk/terminal/), and subject to the same Node 22 requirement through it.
 - Failures are thrown, not returned on a `Result` channel. `resolveSigner` raises `SignerNotAvailableError`; other steps surface their own errors.
 - `SessionHandle.destroy()` must be called or the process will not exit.
-- `AuthConfig` has no defaults — `dappId`, `productId`, `derivationIndex`, and `peopleEndpoints` are all required, because the values are per product and per network.
-- Sessions are keyed by `dappId` on disk, so two products never share a session and signing out of one leaves the other paired.
+- `dappId`, `productId`, and `derivationIndex` are required, because the values are per product. `productId` must be a dotNS id ending in `.dot`, `.paseo`, or `.testnet`, or `localhost`. `network` defaults to `paseo-next-v2`, the only preset.
+- Each `dappId` gets its own storage directory, so two CLIs never share a session and signing out of one leaves the other paired. Do not point two CLIs at the same `storageDir`.
+- Sessions created by releases before 0.6 are not read, so users pair once more after upgrading.
 
 ## Where to Go Next
 
@@ -136,7 +147,7 @@ try {
 
     ---
 
-    The layer below: the adapter, QR rendering, and allowance signers this package composes.
+    The layer below: the adapter, QR rendering, and allowance helpers this package composes.
 
     [:octicons-arrow-right-24: Terminal](/apps/product-sdk/terminal/)
 
