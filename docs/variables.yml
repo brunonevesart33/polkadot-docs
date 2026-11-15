@@ -76,6 +76,9 @@ dependencies:
     hardhat_polkadot:
       name: '@parity/hardhat-polkadot'
       version: 0.3.0
+    product_sdk_terminal:
+      name: '@parity/product-sdk-terminal'
+      version: 0.14.0
     solc:
       name: 'solc'
       # Used by the ethers.js, Web3.js, and viem pages, which compile EVM bytecode
