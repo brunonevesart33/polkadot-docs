@@ -36,9 +36,11 @@ const updateStorage = async (config) => {
     });
     const gasPrice = await web3.eth.getGasPrice();
 
+    // Polkadot Hub can estimate less than Ethereum's 21,000 base gas, which
+    // web3.js refuses to sign, so add the base cost on top of the estimate
     const receipt = await updateTransaction.send({
       from: account.address,
-      gas: gasEstimate,
+      gas: gasEstimate + 21000n,
       gasPrice: gasPrice,
     });
 
