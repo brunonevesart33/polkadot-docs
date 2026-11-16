@@ -2,8 +2,8 @@ const { writeFileSync, existsSync, readFileSync } = require('fs');
 const { join } = require('path');
 const { ethers, JsonRpcProvider } = require('ethers');
 
-const scriptsDir = __dirname;
-const artifactsDir = join(__dirname, '../contracts');
+const abisDir = join(__dirname, '../abis');
+const artifactsDir = join(__dirname, '../artifacts');
 
 // Creates a provider with specified RPC URL and chain details
 const createProvider = (rpcUrl, chainId, chainName) => {
@@ -17,7 +17,7 @@ const createProvider = (rpcUrl, chainId, chainName) => {
 // Reads and parses the ABI file for a given contract
 const getAbi = (contractName) => {
   try {
-    const abiPath = join(artifactsDir, `${contractName}.json`);
+    const abiPath = join(abisDir, `${contractName}.json`);
     return JSON.parse(readFileSync(abiPath, 'utf8'));
   } catch (error) {
     console.error(
@@ -69,7 +69,7 @@ const deployContract = async (contractName, mnemonic, providerConfig) => {
     const address = await contract.getAddress();
     console.log(`Contract ${contractName} deployed at: ${address}`);
 
-    const addressesFile = join(scriptsDir, 'contract-address.json');
+    const addressesFile = join(__dirname, '../contract-address.json');
     const addresses = existsSync(addressesFile)
       ? JSON.parse(readFileSync(addressesFile, 'utf8'))
       : {};

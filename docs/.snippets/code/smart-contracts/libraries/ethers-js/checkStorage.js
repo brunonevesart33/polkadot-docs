@@ -2,7 +2,7 @@ const { ethers } = require('ethers');
 const { readFileSync } = require('fs');
 const { join } = require('path');
 
-const artifactsDir = join(__dirname, '../contracts');
+const abisDir = join(__dirname, '../abis');
 
 const createProvider = (providerConfig) => {
   return new ethers.JsonRpcProvider(providerConfig.rpc, {
@@ -15,7 +15,7 @@ const createWallet = (mnemonic, provider) => {
   return ethers.Wallet.fromPhrase(mnemonic).connect(provider);
 };
 
-const loadContractAbi = (contractName, directory = artifactsDir) => {
+const loadContractAbi = (contractName, directory = abisDir) => {
   const contractPath = join(directory, `${contractName}.json`);
   const contractJson = JSON.parse(readFileSync(contractPath, 'utf8'));
   return contractJson.abi || contractJson; // Depending on JSON structure
