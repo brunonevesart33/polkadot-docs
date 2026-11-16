@@ -123,18 +123,18 @@ In PAPI, the `TypedApi` provides the `tx` and `txFromCallData` methods to send t
 
     Ensure you replace `INSERT_DESTINATION_ADDRESS` and `INSERT_VALUE` with the actual destination address and value, respectively.
 
-- The `txFromCallData` method allows you to send a transaction using the call data. This option accepts binary call data and constructs the transaction from it. It validates the input upon creation and will throw an error if invalid data is provided. The pattern is as follows:
+- The `txFromCallData` method allows you to send a transaction using the call data. This option accepts binary call data and constructs the transaction from it. It returns a promise that resolves to the transaction and rejects if the call data is invalid. The pattern is as follows:
 
     ```typescript
     const callData = Binary.fromHex('0x...');
-    const tx: Transaction = typedApi.txFromCallData(callData);
+    const tx: Transaction = await typedApi.txFromCallData(callData);
     ``` 
 
     For instance, to execute a transaction using the call data, you can use the following snippet:
 
     ```typescript
     const callData = Binary.fromHex('0x00002470617065726d6f6f6e');
-    const tx: Transaction = typedApi.txFromCallData(callData);
+    const tx: Transaction = await typedApi.txFromCallData(callData);
     ```
 
 For more information about sending transactions, refer to the [Transactions](https://papi.how/typed/tx#transactions){target=\_blank} page.
