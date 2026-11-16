@@ -48,7 +48,7 @@ First, create a new folder and initialize your project:
 ```bash
 mkdir viem-project
 cd viem-project
-npm init -y
+npm init -y && npm pkg set type=module
 ```
 
 ## Install Dependencies
@@ -60,7 +60,7 @@ Install viem along with other necessary dependencies, including [`solc`](https:/
 npm install viem solc@{{ dependencies.javascript_packages.solc.version }}
 
 # Install TypeScript and development dependencies
-npm install --save-dev typescript ts-node @types/node
+npm install --save-dev typescript tsx @types/node
 ```
 
 ## Initialize Project
@@ -76,10 +76,10 @@ Add the following scripts to your `package.json` file to enable running TypeScri
 ```json
 {
     "scripts": {
-        "client": "ts-node src/createClient.ts",
-        "compile": "ts-node src/compile.ts",
-        "deploy": "ts-node src/deploy.ts",
-        "interact": "ts-node src/interact.ts"
+        "client": "tsx src/createClient.ts",
+        "compile": "tsx src/compile.ts",
+        "deploy": "tsx src/deploy.ts",
+        "interact": "tsx src/interact.ts"
     },
 }
 ```
