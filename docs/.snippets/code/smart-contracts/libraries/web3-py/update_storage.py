@@ -4,7 +4,7 @@ import json
 
 def get_abi(contract_name):
     try:
-        with open(f"{contract_name}.json", "r") as file:
+        with open(f"abis/{contract_name}.json", "r") as file:
             return json.load(file)
     except Exception as error:
         print(f"❌ Could not find ABI for contract {contract_name}: {error}")
