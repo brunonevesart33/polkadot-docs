@@ -38,7 +38,7 @@ You can access three main categories of chain interactions:
 
 - **[Transactions](https://polkadot.js.org/docs/api/start/api.tx/){target=\_blank}** (`api.tx`):
     - Submit extrinsics (transactions).
-    - **Example**: `api.tx.balances.transfer(accountId, value)`
+    - **Example**: `api.tx.balances.transferKeepAlive(accountId, value)`
 
 The available methods and interfaces will automatically reflect what's possible on your connected chain.
 

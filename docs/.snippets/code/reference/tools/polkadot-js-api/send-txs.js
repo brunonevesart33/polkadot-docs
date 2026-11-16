@@ -4,7 +4,7 @@ const amount = 'INSERT_VALUE'; // Amount in the smallest unit (e.g., Planck for 
 
 // Sign and send a transfer
 const txHash = await api.tx.balances
-  .transfer(recipient, amount)
+  .transferKeepAlive(recipient, amount)
   .signAndSend(alice);
 
 console.log('Transaction Hash:', txHash);
